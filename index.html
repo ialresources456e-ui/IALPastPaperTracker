@@ -1,0 +1,1808 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edexcel Past Paper Analytics & Resources</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        slate: {
+                            850: '#151e2e',
+                            900: '#0f172a',
+                            950: '#080d1a',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- Firebase SDKs (Compat v10.8.0) -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            height: 6px;
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.05);
+        }
+        .dark .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(156, 163, 175, 0.5);
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 min-h-screen flex flex-col transition-colors duration-200">
+
+    <!-- TOP NAVIGATION HEADER -->
+    <header class="border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-850 sticky top-0 z-30 transition-colors duration-200 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+            
+            <!-- Logo & Title -->
+            <div class="flex items-center space-x-3">
+                <div class="bg-indigo-600 text-white p-2 rounded-xl shadow-md shadow-indigo-500/20">
+                    <i data-lucide="graduation-cap" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg leading-tight tracking-tight text-slate-900 dark:text-white">Edexcel Past Paper Analytics</h1>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 font-medium hidden sm:block">IAL Exam Score & Time Tracker</p>
+                </div>
+            </div>
+
+            <!-- View Switcher Tabs (Dashboard / Resources) -->
+            <div class="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
+                <button id="nav-tab-dashboard" onclick="switchMainView('dashboard')" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm">
+                    <i data-lucide="layout-dashboard" class="w-3.5 h-3.5"></i>
+                    <span>Dashboard</span>
+                </button>
+                <button id="nav-tab-resources" onclick="switchMainView('resources')" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white">
+                    <i data-lucide="book-open" class="w-3.5 h-3.5"></i>
+                    <span>Resources</span>
+                </button>
+            </div>
+
+            <!-- Subject & Paper Selectors -->
+            <div id="header-selectors" class="flex items-center gap-2 flex-1 max-w-md mx-2">
+                <!-- Subject Select -->
+                <div class="relative flex-1">
+                    <select id="header-subject-select" onchange="handleHeaderSubjectChange()" 
+                            class="w-full pl-3 pr-8 py-1.5 text-xs sm:text-sm font-semibold rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 focus:outline-none appearance-none cursor-pointer">
+                    </select>
+                    <i data-lucide="chevron-down" class="w-4 h-4 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400"></i>
+                </div>
+
+                <!-- Paper Select -->
+                <div class="relative flex-1">
+                    <select id="header-paper-select" onchange="renderDashboard()" 
+                            class="w-full pl-3 pr-8 py-1.5 text-xs sm:text-sm font-medium rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 focus:outline-none appearance-none cursor-pointer">
+                    </select>
+                    <i data-lucide="chevron-down" class="w-4 h-4 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400"></i>
+                </div>
+            </div>
+
+            <!-- Action Controls -->
+            <div class="flex items-center space-x-2">
+                <!-- Google Sign In / Account Status Button -->
+                <button id="google-auth-btn" onclick="toggleGoogleAuth()" 
+                        class="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-xs font-semibold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+                    <i data-lucide="user" class="w-4 h-4 text-indigo-500"></i>
+                    <span id="google-user-label">Sign in with Google</span>
+                </button>
+
+                <!-- Subject Manager Button -->
+                <button onclick="openSubjectManager()" 
+                        class="p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 transition-colors"
+                        title="Customize Subjects & Papers">
+                    <i data-lucide="settings" class="w-5 h-5"></i>
+                </button>
+
+                <!-- Theme Toggle Button -->
+                <button onclick="toggleTheme()" 
+                        class="p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 transition-colors"
+                        title="Toggle Light/Dark Theme">
+                    <i id="theme-icon" data-lucide="sun" class="w-5 h-5"></i>
+                </button>
+
+                <!-- Persistent Log Paper Button -->
+                <button onclick="openLogModal()" 
+                        class="flex items-center space-x-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-3.5 py-2 rounded-lg text-xs sm:text-sm shadow-md shadow-indigo-500/20 transition-all active:scale-95">
+                    <i data-lucide="plus" class="w-4 h-4"></i>
+                    <span class="hidden sm:inline">Log Paper</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT CONTAINER -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full space-y-8">
+        
+        <!-- DASHBOARD VIEW -->
+        <div id="view-dashboard" class="space-y-8">
+            <!-- STATS SUMMARY CARDS BANNER & TIMER WIDGET -->
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                
+                <!-- Live Exam Timer Widget -->
+                <div class="md:col-span-1 bg-gradient-to-br from-indigo-600 to-indigo-800 text-white p-4 rounded-2xl shadow-md flex flex-col justify-between space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span id="timer-title" class="text-xs font-bold uppercase tracking-wider text-indigo-200">Exam Timer</span>
+                        
+                        <div class="flex items-center bg-indigo-900/60 p-0.5 rounded-lg border border-indigo-400/30 text-[10px]">
+                            <button id="mode-stopwatch-btn" onclick="setTimerMode('stopwatch')" class="px-1.5 py-0.5 rounded-md font-bold bg-white text-indigo-900">Stopwatch</button>
+                            <button id="mode-countdown-btn" onclick="setTimerMode('countdown')" class="px-1.5 py-0.5 rounded-md font-semibold text-indigo-200 hover:text-white">Countdown</button>
+                        </div>
+                    </div>
+
+                    <div class="text-center my-1">
+                        <span id="live-timer-display" class="text-2xl font-bold font-mono tracking-wider">00:00:00</span>
+                        
+                        <div id="countdown-setup" class="hidden mt-2 flex items-center justify-center gap-1 text-xs">
+                            <input type="number" id="cd-hours" min="0" max="23" value="1" class="w-10 px-1 py-0.5 rounded bg-indigo-900/80 text-center font-mono border border-indigo-400/40 text-white focus:outline-none" placeholder="HH">
+                            <span>h</span>
+                            <input type="number" id="cd-mins" min="0" max="59" value="30" class="w-10 px-1 py-0.5 rounded bg-indigo-900/80 text-center font-mono border border-indigo-400/40 text-white focus:outline-none" placeholder="MM">
+                            <span>m</span>
+                            <button onclick="applyCountdownSetup()" class="ml-1 px-2 py-0.5 bg-indigo-500 hover:bg-indigo-400 rounded text-[10px] font-bold">Set</button>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-center gap-2">
+                        <button id="btn-start-timer" onclick="startTimer()" class="p-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white text-xs font-semibold">
+                            <i data-lucide="play" class="w-3.5 h-3.5 pointer-events-none"></i>
+                        </button>
+                        <button id="btn-pause-timer" onclick="pauseTimer()" class="p-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white text-xs font-semibold hidden">
+                            <i data-lucide="pause" class="w-3.5 h-3.5 pointer-events-none"></i>
+                        </button>
+                        <button onclick="resetTimer()" class="p-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white text-xs font-semibold">
+                            <i data-lucide="rotate-ccw" class="w-3.5 h-3.5 pointer-events-none"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Total Papers Logged -->
+                <div class="bg-white dark:bg-slate-850 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Attempts</span>
+                        <div class="p-2 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400">
+                            <i data-lucide="file-text" class="w-4 h-4"></i>
+                        </div>
+                    </div>
+                    <div class="mt-3 flex items-baseline justify-between">
+                        <span id="stat-total-papers" class="text-2xl sm:text-3xl font-bold tracking-tight">0</span>
+                        <span id="stat-completion-pct" class="text-xs font-medium text-slate-400">0% of total</span>
+                    </div>
+                </div>
+
+                <!-- Average Percentage -->
+                <div class="bg-white dark:bg-slate-850 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Average Score</span>
+                        <div class="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400">
+                            <i data-lucide="percent" class="w-4 h-4"></i>
+                        </div>
+                    </div>
+                    <div class="mt-3 flex items-baseline justify-between">
+                        <span id="stat-avg-score" class="text-2xl sm:text-3xl font-bold tracking-tight">0%</span>
+                        <span id="stat-avg-badge" class="text-xs font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500">-</span>
+                    </div>
+                </div>
+
+                <!-- Average Time per Paper -->
+                <div class="bg-white dark:bg-slate-850 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Avg Time / Paper</span>
+                        <div class="p-2 rounded-xl bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400">
+                            <i data-lucide="clock" class="w-4 h-4"></i>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <span id="stat-avg-time" class="text-xl sm:text-2xl font-bold tracking-tight font-mono">00:00:00</span>
+                    </div>
+                </div>
+
+                <!-- Highest Grade achieved -->
+                <div class="bg-white dark:bg-slate-850 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Top Recorded Grade</span>
+                        <div class="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400">
+                            <i data-lucide="award" class="w-4 h-4"></i>
+                        </div>
+                    </div>
+                    <div class="mt-3 flex items-baseline justify-between">
+                        <span id="stat-top-grade" class="text-2xl sm:text-3xl font-bold tracking-tight text-emerald-600 dark:text-emerald-400">-</span>
+                        <span class="text-xs text-slate-400">Boundaries</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MATRIX & ACTIVITY GRID -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                
+                <!-- Past Paper Matrix Grid -->
+                <div class="lg:col-span-2 bg-white dark:bg-slate-850 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h2 class="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
+                                <i data-lucide="grid" class="w-4 h-4 text-indigo-500"></i>
+                                Past Paper Matrix
+                            </h2>
+                            <p id="matrix-subtitle" class="text-xs text-slate-500 dark:text-slate-400">Shows latest attempt per paper. Select a cell to log a new attempt.</p>
+                        </div>
+                        <div class="flex items-center gap-2 text-xs">
+                            <span class="inline-flex items-center gap-1 text-slate-500 dark:text-slate-400"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> ≥80% (A/A*)</span>
+                            <span class="inline-flex items-center gap-1 text-slate-500 dark:text-slate-400"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> 50-79%</span>
+                            <span class="inline-flex items-center gap-1 text-slate-500 dark:text-slate-400"><span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span> &lt;50%</span>
+                        </div>
+                    </div>
+
+                    <!-- Matrix Table Container -->
+                    <div class="overflow-x-auto custom-scrollbar">
+                        <table class="w-full text-center border-collapse">
+                            <thead>
+                                <tr class="border-b border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                                    <th class="py-3 px-2 text-left">Year / Paper</th>
+                                    <th class="py-3 px-2">Jan / Feb</th>
+                                    <th class="py-3 px-2">May / June</th>
+                                    <th class="py-3 px-2">Oct / Nov</th>
+                                </tr>
+                            </thead>
+                            <tbody id="matrix-body" class="divide-y divide-slate-100 dark:divide-slate-800/60 text-sm">
+                                <!-- Matrix rows dynamically rendered -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Dynamic Grade Scale Display -->
+                <div class="bg-white dark:bg-slate-850 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between space-y-6">
+                    <div>
+                        <h2 class="font-bold text-base text-slate-900 dark:text-white mb-1 flex items-center gap-2">
+                            <i data-lucide="bar-chart-2" class="w-4 h-4 text-indigo-500"></i>
+                            Exact Edexcel Grade Boundaries
+                        </h2>
+                        <p id="grade-scale-subtitle" class="text-xs text-slate-500 dark:text-slate-400 mb-4">Official Raw Mark thresholds</p>
+                        
+                        <div id="grade-scale-container" class="space-y-2 text-xs">
+                            <!-- Dynamic grade scale rows rendered here -->
+                        </div>
+                    </div>
+
+                    <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                        <div class="flex items-center justify-between text-xs text-slate-500 mb-2">
+                            <span>Subject Paper Coverage</span>
+                            <span id="coverage-text" class="font-bold font-mono">0 / 25</span>
+                        </div>
+                        <div class="w-full bg-slate-200 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+                            <div id="coverage-bar" class="bg-indigo-600 h-full rounded-full transition-all duration-300" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RECENT LOGGED ATTEMPTS FEED TABLE -->
+            <div class="bg-white dark:bg-slate-850 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
+                            <i data-lucide="history" class="w-4 h-4 text-indigo-500"></i>
+                            Recent Paper Attempts (History)
+                        </h2>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Multiple attempts recorded and saved (Click row to view details)</p>
+                    </div>
+                    <!-- Export CSV Button -->
+                    <button onclick="exportAttemptsToCSV()" 
+                            class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-xs font-semibold hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors">
+                        <i data-lucide="download" class="w-3.5 h-3.5 text-indigo-500"></i>
+                        <span>Export CSV</span>
+                    </button>
+                </div>
+
+                <!-- Attempts Table -->
+                <div class="overflow-x-auto custom-scrollbar">
+                    <table class="w-full text-left border-collapse min-w-[600px]">
+                        <thead>
+                            <tr class="border-b border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                                <th class="py-3 px-3">Subject & Paper</th>
+                                <th class="py-3 px-3">Session / Year</th>
+                                <th class="py-3 px-3">Raw Mark</th>
+                                <th class="py-3 px-3">Percentage</th>
+                                <th class="py-3 px-3">Grade</th>
+                                <th class="py-3 px-3">Time Used</th>
+                                <th class="py-3 px-3">Type</th>
+                                <th class="py-3 px-3 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="attempts-table-body" class="divide-y divide-slate-100 dark:divide-slate-800/60 text-sm">
+                            <!-- Attempts dynamically rendered -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- RESOURCES TAB VIEW -->
+        <div id="view-resources" class="hidden space-y-8">
+            <div class="bg-white dark:bg-slate-850 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
+                <div>
+                    <h2 class="font-bold text-xl text-slate-900 dark:text-white flex items-center gap-2">
+                        <i data-lucide="book-open" class="w-6 h-6 text-indigo-500"></i>
+                        Edexcel IAL Revision Resources Hub
+                    </h2>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Curated links, notes, past papers, topicals, and revision guides</p>
+                </div>
+
+                <!-- CATEGORIES GRID -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    
+                    <!-- PHYSICS RESOURCES -->
+                    <div class="p-5 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-4">
+                        <div class="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-3">
+                            <i data-lucide="zap" class="w-5 h-5 text-amber-500"></i>
+                            <h3 class="font-bold text-base text-slate-900 dark:text-white">Physics Resources</h3>
+                        </div>
+
+                        <ul class="space-y-2.5 text-xs">
+                            <li>
+                                <a href="https://theonlinephysicstutor.com/worksheets.html" target="_blank" class="text-indigo-600 dark:text-indigo-400 hover:underline font-semibold flex items-center gap-1.5">
+                                    <i data-lucide="external-link" class="w-3.5 h-3.5"></i> The Online Physics Tutor (Worksheets)
+                                </a>
+                            </li>
+                            <li>
+                                <span class="font-bold text-slate-700 dark:text-slate-300 block mb-1">Unit Notes & Folders:</span>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <a href="https://drive.google.com/drive/u/0/folders/1an8DssOwjADMQnk5hVF62ECQm33zt8kE" target="_blank" class="p-2 rounded bg-white dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200">U1 Notes</a>
+                                    <a href="https://drive.google.com/drive/u/0/folders/1JwIKzHS_vxRjJMc4v8S32UytXv1kdbAq" target="_blank" class="p-2 rounded bg-white dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200">U2 Notes</a>
+                                    <a href="https://drive.google.com/drive/u/0/folders/1BsluUuFEy6IlP1cVPT9K_jA62RRMcWSC" target="_blank" class="p-2 rounded bg-white dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200">U3 Notes</a>
+                                    <a href="https://drive.google.com/drive/u/0/folders/12Z6HEylDae7JVEJfPCFnRKZZPsiTti2f" target="_blank" class="p-2 rounded bg-white dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200">U4 Notes</a>
+                                    <a href="https://drive.google.com/drive/u/0/folders/1rfp29Sch2SZ0hGDF1ggN6Gd0LEk5FGy9" target="_blank" class="p-2 rounded bg-white dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200">U5 Notes</a>
+                                    <a href="https://drive.google.com/drive/u/0/folders/1YKVHkBAjxvkKeO5xKTCBbYIClUIi1_Ml" target="_blank" class="p-2 rounded bg-white dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200">U6 Notes</a>
+                                </div>
+                            </li>
+                            <li class="pt-2">
+                                <span class="font-bold text-slate-700 dark:text-slate-300 block mb-1">Topical Questions:</span>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <a href="https://drive.google.com/drive/u/0/folders/1jNwCtK6RvUmgSi811A9hy2LaNJWMhiVi" target="_blank" class="p-2 rounded bg-white dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950 border border-slate-200 dark:border-slate-700 text-indigo-600 dark:text-indigo-400 font-medium">AS Topicals</a>
+                                    <a href="https://drive.google.com/drive/u/0/folders/1Fw9ydpgUmRPUfQW9co5wDvYLWiwrS-vg" target="_blank" class="p-2 rounded bg-white dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950 border border-slate-200 dark:border-slate-700 text-indigo-600 dark:text-indigo-400 font-medium">A2 Topicals</a>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- BIOLOGY RESOURCES -->
+                    <div class="p-5 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-4">
+                        <div class="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-3">
+                            <i data-lucide="dna" class="w-5 h-5 text-emerald-500"></i>
+                            <h3 class="font-bold text-base text-slate-900 dark:text-white">Biology Resources</h3>
+                        </div>
+
+                        <ul class="space-y-3 text-xs">
+                            <li>
+                                <span class="font-bold text-slate-700 dark:text-slate-300 block mb-1">Unit Notes:</span>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <a href="https://drive.google.com/drive/folders/19Nz1OAI--H4VzfAseyZvvKhYGUF6THLD?usp=drive_link" target="_blank" class="p-1.5 rounded bg-white dark:bg-slate-800 hover:bg-indigo-50 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200">Unit 1 Notes</a>
+                                    <a href="https://drive.google.com/drive/folders/19PevLlAEgOJJT4KtKGjy7YyDy344NBuJ?usp=drive_link" target="_blank" class="p-1.5 rounded bg-white dark:bg-slate-800 hover:bg-indigo-50 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200">Unit 2 Notes</a>
+                                    <a href="https://drive.google.com/drive/folders/19QlRMbCRs4brS8kqFBkyvLxmk2_Thqsi?usp=drive_link" target="_blank" class="p-1.5 rounded bg-white dark:bg-slate-800 hover:bg-indigo-50 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200">Unit 3 Notes</a>
+                                    <a href="https://drive.google.com/drive/folders/1eNes4dDl_9wmPVr3oVCDZz-EAoJQo9to?usp=drive_link" target="_blank" class="p-1.5 rounded bg-white dark:bg-slate-800 hover:bg-indigo-50 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200">Unit 4 Notes</a>
+                                    <a href="https://drive.google.com/drive/folders/1v8lTvQKnVV-DDshbhJeKDp049Cbw46gL?usp=drive_link" target="_blank" class="p-1.5 rounded bg-white dark:bg-slate-800 hover:bg-indigo-50 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200">Unit 5 Notes</a>
+                                    <a href="https://drive.google.com/drive/folders/1KsOT2SPogAgeV5kvbBAzzbs8bQxYCDSN?usp=drive_link" target="_blank" class="p-1.5 rounded bg-white dark:bg-slate-800 hover:bg-indigo-50 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200">Unit 6 Notes</a>
+                                </div>
+                            </li>
+                            <li>
+                                <span class="font-bold text-slate-700 dark:text-slate-300 block mb-1">Practice & Questions:</span>
+                                <div class="space-y-1.5">
+                                    <a href="https://rocketrevise.com/a-level-edexcel-ial/edexcel-ial-biology/" target="_blank" class="text-indigo-600 dark:text-indigo-400 hover:underline block flex items-center gap-1">
+                                        <i data-lucide="external-link" class="w-3 h-3"></i> Topic Questions (AS + A2)
+                                    </a>
+                                    <a href="https://drive.google.com/drive/folders/1CXWkTtoeJ7-71ssO4UqJbJ-A9BUQEyC7?usp=drive_link" target="_blank" class="text-indigo-600 dark:text-indigo-400 hover:underline block flex items-center gap-1">
+                                        <i data-lucide="external-link" class="w-3 h-3"></i> All 6-Mark Questions (U1, 2, 4, 5)
+                                    </a>
+                                    <a href="https://drive.google.com/drive/folders/14kfpOzOFHGraQ8N-63X0kvop5lQOoLxM" target="_blank" class="text-indigo-600 dark:text-indigo-400 hover:underline block flex items-center gap-1">
+                                        <i data-lucide="external-link" class="w-3 h-3"></i> IAL Biology Unit 1-6 FAQ (Common Questions)
+                                    </a>
+                                </div>
+                            </li>
+                            <li>
+                                <span class="font-bold text-slate-700 dark:text-slate-300 block mb-1">Extra Revision & Notes:</span>
+                                <div class="space-y-1.5">
+                                    <a href="https://drive.google.com/file/d/1QnlyiJAm1X67DlcS9uHz1UzYuFouyHA/view?usp=drive_link" target="_blank" class="text-indigo-600 dark:text-indigo-400 hover:underline block flex items-center gap-1">
+                                        <i data-lucide="external-link" class="w-3 h-3"></i> Recommended YouTube Channels List
+                                    </a>
+                                    <a href="https://drive.google.com/drive/folders/112dZmPUt1LEC7kNS_VOw1jD2UMhpjAZG" target="_blank" class="text-indigo-600 dark:text-indigo-400 hover:underline block flex items-center gap-1">
+                                        <i data-lucide="external-link" class="w-3 h-3"></i> Last-Minute Revision Notes
+                                    </a>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- CHEMISTRY & GENERAL RESOURCES -->
+                    <div class="p-5 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-4">
+                        <!-- CHEMISTRY -->
+                        <div>
+                            <div class="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-3 mb-3">
+                                <i data-lucide="flask-conical" class="w-5 h-5 text-purple-500"></i>
+                                <h3 class="font-bold text-base text-slate-900 dark:text-white">Chemistry Resources</h3>
+                            </div>
+                            <a href="https://drive.google.com/drive/folders/1kFlaC1dn2OeHFUNFeYZKIBoDh6u5O7cN" target="_blank" class="p-2 rounded bg-white dark:bg-slate-800 hover:bg-indigo-50 border border-slate-200 dark:border-slate-700 text-indigo-600 dark:text-indigo-400 font-semibold text-xs flex items-center justify-between">
+                                <span>Chemistry Master Drive Folder</span>
+                                <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+                            </a>
+                        </div>
+
+                        <!-- GENERAL REVISION PORTALS -->
+                        <div class="pt-2">
+                            <div class="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-3 mb-3">
+                                <i data-lucide="globe" class="w-5 h-5 text-blue-500"></i>
+                                <h3 class="font-bold text-base text-slate-900 dark:text-white">General Portals & Tools</h3>
+                            </div>
+                            <div class="space-y-2 text-xs">
+                                <a href="https://ialresources456e-ui.github.io/IALPastPaperTracker/" target="_blank" class="p-2 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 hover:bg-indigo-50 flex items-center justify-between">
+                                    <span class="font-semibold">Past Paper Tracker Web App</span>
+                                    <i data-lucide="external-link" class="w-3.5 h-3.5 text-indigo-500"></i>
+                                </a>
+                                <a href="https://www.physicsandmathstutor.com/" target="_blank" class="p-2 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 hover:bg-indigo-50 flex items-center justify-between">
+                                    <span class="font-semibold">Physics & Maths Tutor (PMT)</span>
+                                    <i data-lucide="external-link" class="w-3.5 h-3.5 text-indigo-500"></i>
+                                </a>
+                                <a href="https://www.savemyexams.com/international-a-level/" target="_blank" class="p-2 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 hover:bg-indigo-50 flex items-center justify-between">
+                                    <span class="font-semibold">Save My Exams (IAL)</span>
+                                    <i data-lucide="external-link" class="w-3.5 h-3.5 text-indigo-500"></i>
+                                </a>
+                                <a href="https://rocketrevise.com/a-level-edexcel-ial/" target="_blank" class="p-2 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 hover:bg-indigo-50 flex items-center justify-between">
+                                    <span class="font-semibold">Rocket Revise</span>
+                                    <i data-lucide="external-link" class="w-3.5 h-3.5 text-indigo-500"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- LOG PAPER MODAL POPUP -->
+    <div id="log-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm hidden">
+        <div class="bg-white dark:bg-slate-850 w-full max-w-lg rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl p-6 space-y-5 overflow-y-auto max-h-[90vh]">
+            
+            <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+                <h3 class="font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">
+                    <i data-lucide="file-plus" class="w-5 h-5 text-indigo-500"></i>
+                    Log Paper Attempt
+                </h3>
+                <button onclick="closeLogModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <form id="log-form" onsubmit="savePaperAttempt(event)" class="space-y-4">
+                
+                <!-- Trial Mode & N/A Toggles -->
+                <div class="space-y-2">
+                    <div class="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-center justify-between">
+                        <div>
+                            <span class="text-xs font-bold text-amber-600 dark:text-amber-400 block">Practice / Trial Attempt</span>
+                            <span class="text-[11px] text-slate-500 dark:text-slate-400">If checked, this run will be excluded from overall average statistics.</span>
+                        </div>
+                        <input type="checkbox" id="modal-is-trial" onchange="handleTrialToggleChange()" class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer">
+                    </div>
+
+                    <div id="na-score-container" class="p-3 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl flex items-center justify-between opacity-50 pointer-events-none transition-opacity">
+                        <div>
+                            <span class="text-xs font-bold text-slate-700 dark:text-slate-300 block">N/A Score / Unscored Practice</span>
+                            <span class="text-[11px] text-slate-500 dark:text-slate-400">Log attempt without recording a score (Trial mode only).</span>
+                        </div>
+                        <input type="checkbox" id="modal-is-na" onchange="handleNaToggleChange()" class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer">
+                    </div>
+                </div>
+
+                <!-- Subject & Paper Selector -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Subject</label>
+                        <select id="modal-subject-select" onchange="handleModalSubjectChange()" required
+                                class="w-full px-3 py-2 text-sm rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Paper / Unit</label>
+                        <select id="modal-paper-select" onchange="updateModalMaxMarkAndGrade()" required
+                                class="w-full px-3 py-2 text-sm rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Session & Year -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Exam Session / Type</label>
+                        <select id="modal-session-select" onchange="handleModalSessionTypeChange()" required
+                                class="w-full px-3 py-2 text-sm rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                            <option value="May/June" selected>May / June</option>
+                            <option value="Jan/Feb">Jan / Feb</option>
+                            <option value="Oct/Nov">Oct / Nov</option>
+                            <option value="Specimen">Specimen Paper</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Year</label>
+                        <select id="modal-year-select" onchange="updateModalMaxMarkAndGrade()" required
+                                class="w-full px-3 py-2 text-sm rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Marks Entry & Grade Calculation -->
+                <div id="marks-input-panel" class="grid grid-cols-2 gap-3 p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Raw Mark Scored</label>
+                        <input type="number" id="modal-raw-mark" min="0" max="200" required oninput="calculateGradePreview()" placeholder="e.g. 58"
+                               class="w-full px-3 py-2 text-sm rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Total Possible Mark</label>
+                        <input type="number" id="modal-total-mark" min="1" max="200" value="75" required oninput="calculateGradePreview()" placeholder="e.g. 75"
+                               class="w-full px-3 py-2 text-sm rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    </div>
+
+                    <!-- Dynamic Computed Grade Banner -->
+                    <div class="col-span-2 flex items-center justify-between pt-2 border-t border-slate-200 dark:border-slate-800">
+                        <span class="text-xs text-slate-500">Calculated Percentage & Grade:</span>
+                        <div class="flex items-center gap-2">
+                            <span id="preview-percentage" class="font-mono font-bold text-sm">0%</span>
+                            <span id="preview-grade-badge" class="px-2 py-0.5 rounded-md text-xs font-bold bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300">Grade U</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Time Used (HH:MM:SS) -->
+                <div>
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300">Time Spent (HH:MM:SS)</label>
+                        <button type="button" onclick="copyLiveTimerToModal()" class="text-xs text-indigo-600 dark:text-indigo-400 hover:underline">Use Live Timer</button>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2">
+                        <input type="number" id="modal-time-hh" min="0" max="23" placeholder="HH" class="px-3 py-2 text-sm font-mono text-center rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                        <input type="number" id="modal-time-mm" min="0" max="59" placeholder="MM" class="px-3 py-2 text-sm font-mono text-center rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                        <input type="number" id="modal-time-ss" min="0" max="59" placeholder="SS" class="px-3 py-2 text-sm font-mono text-center rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                    </div>
+                </div>
+
+                <!-- Mistakes & Notes -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Mistakes / Review Notes (Optional)</label>
+                    <textarea id="modal-notes" rows="2" placeholder="e.g. Silly calculation error on integration by parts Q4..."
+                              class="w-full px-3 py-2 text-sm rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-indigo-500 focus:outline-none"></textarea>
+                </div>
+
+                <!-- Submit & Modal Footer -->
+                <div class="flex items-center justify-end space-x-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+                    <button type="button" onclick="closeLogModal()" class="px-4 py-2 text-xs font-semibold rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">Cancel</button>
+                    <button type="submit" class="px-4 py-2 text-xs font-semibold rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 shadow-md shadow-indigo-500/20">Save Attempt</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- VIEW ATTEMPT DETAIL MODAL POPUP -->
+    <div id="detail-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm hidden">
+        <div class="bg-white dark:bg-slate-850 w-full max-w-lg rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl p-6 space-y-5 overflow-y-auto max-h-[90vh]">
+            
+            <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+                <h3 class="font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">
+                    <i data-lucide="file-text" class="w-5 h-5 text-indigo-500"></i>
+                    Attempt Details
+                </h3>
+                <button onclick="closeDetailModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <div id="detail-modal-content" class="space-y-4 text-xs sm:text-sm">
+                <!-- Dynamic content injected by JavaScript -->
+            </div>
+
+            <div class="flex items-center justify-end pt-3 border-t border-slate-100 dark:border-slate-800">
+                <button onclick="closeDetailModal()" class="px-4 py-2 text-xs font-semibold rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 shadow-md shadow-indigo-500/20">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SUBJECT & PAPER MANAGER MODAL -->
+    <div id="subject-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm hidden">
+        <div class="bg-white dark:bg-slate-850 w-full max-w-2xl rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl p-6 space-y-6 overflow-y-auto max-h-[90vh]">
+            
+            <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+                <h3 class="font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">
+                    <i data-lucide="settings" class="w-5 h-5 text-indigo-500"></i>
+                    Customize Subjects & Unit Codes
+                </h3>
+                <button onclick="closeSubjectManager()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- Add New Subject Form -->
+            <div class="p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 space-y-3">
+                <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500">Add New Subject</h4>
+                <div class="flex gap-2">
+                    <input type="text" id="new-subject-name" placeholder="Subject Name (e.g. Economics)" class="flex-1 px-3 py-1.5 text-sm rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none">
+                    <button onclick="addNewSubject()" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold">Add Subject</button>
+                </div>
+            </div>
+
+            <!-- Subject & Papers List -->
+            <div id="subject-manager-list" class="space-y-4">
+                <!-- Dynamically rendered subject editors -->
+            </div>
+
+            <div class="flex justify-end border-t border-slate-100 dark:border-slate-800 pt-3">
+                <button onclick="closeSubjectManager()" class="px-4 py-2 bg-indigo-600 text-white text-xs font-semibold rounded-lg">Done</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN APP JAVASCRIPT LOGIC -->
+    <script>
+        // YOUR FIREBASE CONFIGURATION
+        const firebaseConfig = {
+            apiKey: "AIzaSyDAXhJUedrOUp6kQMP8qTFu1Xq9XOcVqHs",
+            authDomain: "ial-past-paper-tracker-41991.firebaseapp.com",
+            projectId: "ial-past-paper-tracker-41991",
+            storageBucket: "ial-past-paper-tracker-41991.firebasestorage.app",
+            messagingSenderId: "643747464638",
+            appId: "1:643747464638:web:bcba658276daa6501125ef",
+            measurementId: "G-0KX6L64ENW"
+        };
+
+        // Initialize Firebase SDK
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+        const googleProvider = new firebase.auth.GoogleAuthProvider();
+
+        let currentUser = null;
+
+        // DEFAULT SUBJECTS CONFIGURATION
+        const DEFAULT_SUBJECTS = [
+            {
+                id: 'mathematics',
+                name: 'Mathematics',
+                papers: [
+                    { id: 'p1', name: 'Pure Mathematics 1', code: 'WMA11/01', baseCode: 'WMA11' },
+                    { id: 'p2', name: 'Pure Mathematics 2', code: 'WMA12/01', baseCode: 'WMA12' },
+                    { id: 'p3', name: 'Pure Mathematics 3', code: 'WMA13/01', baseCode: 'WMA13' },
+                    { id: 'p4', name: 'Pure Mathematics 4', code: 'WMA14/01', baseCode: 'WMA14' },
+                    { id: 'm1', name: 'Mechanics 1', code: 'WME01/01', baseCode: 'WME01' },
+                    { id: 's1', name: 'Statistics 1', code: 'WST01/01', baseCode: 'WST01' }
+                ]
+            },
+            {
+                id: 'physics',
+                name: 'Physics',
+                papers: [
+                    { id: 'ph1', name: 'Physics Unit 1', code: 'WPH11/01', baseCode: 'WPH11' },
+                    { id: 'ph2', name: 'Physics Unit 2', code: 'WPH12/01', baseCode: 'WPH12' },
+                    { id: 'ph3', name: 'Physics Unit 3 Practical', code: 'WPH13/01', baseCode: 'WPH13' },
+                    { id: 'ph4', name: 'Physics Unit 4', code: 'WPH14/01', baseCode: 'WPH14' },
+                    { id: 'ph5', name: 'Physics Unit 5', code: 'WPH15/01', baseCode: 'WPH15' },
+                    { id: 'ph6', name: 'Physics Unit 6 Practical', code: 'WPH16/01', baseCode: 'WPH16' }
+                ]
+            },
+            {
+                id: 'chemistry',
+                name: 'Chemistry',
+                papers: [
+                    { id: 'ch1', name: 'Chemistry Unit 1', code: 'WCH11/01', baseCode: 'WCH11' },
+                    { id: 'ch2', name: 'Chemistry Unit 2', code: 'WCH12/01', baseCode: 'WCH12' },
+                    { id: 'ch3', name: 'Chemistry Unit 3 Practical', code: 'WCH13/01', baseCode: 'WCH13' },
+                    { id: 'ch4', name: 'Chemistry Unit 4', code: 'WCH14/01', baseCode: 'WCH14' },
+                    { id: 'ch5', name: 'Chemistry Unit 5', code: 'WCH15/01', baseCode: 'WCH15' },
+                    { id: 'ch6', name: 'Chemistry Unit 6 Practical', code: 'WCH16/01', baseCode: 'WCH16' }
+                ]
+            },
+            {
+                id: 'biology',
+                name: 'Biology',
+                papers: [
+                    { id: 'bi1', name: 'Biology Unit 1', code: 'WBI11/01', baseCode: 'WBI11' },
+                    { id: 'bi2', name: 'Biology Unit 2', code: 'WBI12/01', baseCode: 'WBI12' },
+                    { id: 'bi3', name: 'Biology Unit 3 Practical', code: 'WBI13/01', baseCode: 'WBI13' },
+                    { id: 'bi4', name: 'Biology Unit 4', code: 'WBI14/01', baseCode: 'WBI14' },
+                    { id: 'bi5', name: 'Biology Unit 5', code: 'WBI15/01', baseCode: 'WBI15' },
+                    { id: 'bi6', name: 'Biology Unit 6 Practical', code: 'WBI16/01', baseCode: 'WBI16' }
+                ]
+            },
+            {
+                id: 'further_mathematics',
+                name: 'Further Mathematics',
+                papers: [
+                    { id: 'fm1', name: 'Further Pure 1', code: 'WFM01/01', baseCode: 'WFM01' },
+                    { id: 'fm2', name: 'Further Pure 2', code: 'WFM02/01', baseCode: 'WFM02' },
+                    { id: 'fm3', name: 'Further Pure 3', code: 'WFM03/01', baseCode: 'WFM03' },
+                    { id: 'm2', name: 'Mechanics 2', code: 'WME02/01', baseCode: 'WME02' },
+                    { id: 's2', name: 'Statistics 2', code: 'WST02/01', baseCode: 'WST02' },
+                    { id: 'd1', name: 'Decision 1', code: 'WDM11/01', baseCode: 'WDM11' }
+                ]
+            }
+        ];
+
+        // SAMPLE BOUNDARIES DICTIONARY
+        const SAMPLE_BOUNDARIES = {
+            "WPH11": {
+                "June 2024": { "maxMark": 80, "AStar": null, "A": 52, "B": 44, "C": 36, "D": 28, "E": 21 },
+                "January 2024": { "maxMark": 80, "AStar": null, "A": 50, "B": 42, "C": 34, "D": 26, "E": 19 },
+                "June 2023": { "maxMark": 80, "AStar": null, "A": 48, "B": 40, "C": 32, "D": 25, "E": 18 },
+                "Specimen 2018": { "maxMark": 80, "AStar": null, "A": 53, "B": 45, "C": 37, "D": 29, "E": 21 }
+            },
+            "WMA11": {
+                "June 2024": { "maxMark": 75, "AStar": null, "A": 58, "B": 49, "C": 40, "D": 31, "E": 23 },
+                "January 2024": { "maxMark": 75, "AStar": null, "A": 56, "B": 47, "C": 38, "D": 30, "E": 22 },
+                "Specimen 2018": { "maxMark": 75, "AStar": null, "A": 54, "B": 46, "C": 39, "D": 32, "E": 24 }
+            },
+            "WMA13": {
+                "June 2024": { "maxMark": 75, "AStar": 64, "A": 56, "B": 48, "C": 40, "D": 32, "E": 24 },
+                "Specimen 2018": { "maxMark": 75, "AStar": 61, "A": 54, "B": 46, "C": 39, "D": 32, "E": 24 }
+            }
+        };
+
+        const YEARS = [2026, 2025, 2024, 2023, 2022, 2021, 2020, 2019];
+        const SESSIONS = ['Jan/Feb', 'May/June', 'Oct/Nov'];
+
+        // APP STATE MANAGEMENT
+        let appState = {
+            subjects: [],
+            attempts: [],
+            theme: 'dark'
+        };
+
+        // TIMER STATE
+        let timerMode = 'stopwatch';
+        let timerInterval = null;
+        let timerSeconds = 0;
+        let countdownInitialSecs = 5400;
+
+        // INITIALIZATION
+        window.addEventListener('DOMContentLoaded', () => {
+            loadStateFromLocalStorage();
+            populateYearDropdowns();
+            renderSubjectDropdowns();
+            renderDashboard();
+            lucide.createIcons();
+
+            // Listen for Google Auth State Changes
+            auth.onAuthStateChanged((user) => {
+                const label = document.getElementById('google-user-label');
+                if (user) {
+                    currentUser = user;
+                    label.textContent = `Sign Out (${user.displayName ? user.displayName.split(' ')[0] : 'User'})`;
+                    syncCloudData(user.uid);
+                } else {
+                    currentUser = null;
+                    label.textContent = `Sign in with Google`;
+                }
+            });
+        });
+
+        // VIEW SWITCHER LOGIC
+        function switchMainView(viewName) {
+            const dashboardView = document.getElementById('view-dashboard');
+            const resourcesView = document.getElementById('view-resources');
+            const selectors = document.getElementById('header-selectors');
+
+            const tabDashboard = document.getElementById('nav-tab-dashboard');
+            const tabResources = document.getElementById('nav-tab-resources');
+
+            if (viewName === 'resources') {
+                dashboardView.classList.add('hidden');
+                resourcesView.classList.remove('hidden');
+                selectors.classList.add('opacity-0', 'pointer-events-none');
+
+                tabResources.className = "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm";
+                tabDashboard.className = "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white";
+            } else {
+                resourcesView.classList.add('hidden');
+                dashboardView.classList.remove('hidden');
+                selectors.classList.remove('opacity-0', 'pointer-events-none');
+
+                tabDashboard.className = "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm";
+                tabResources.className = "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white";
+            }
+        }
+
+        // GOOGLE AUTH TOGGLE
+        function toggleGoogleAuth() {
+            if (currentUser) {
+                if (confirm('Do you want to sign out of your Google account?')) {
+                    auth.signOut().then(() => {
+                        location.reload();
+                    });
+                }
+            } else {
+                auth.signInWithPopup(googleProvider)
+                    .then((result) => {
+                        currentUser = result.user;
+                        syncCloudData(currentUser.uid);
+                    })
+                    .catch((err) => {
+                        console.error('Google Sign-In Error:', err);
+                        alert('Could not sign in with Google: ' + err.message);
+                    });
+            }
+        }
+
+        // SYNC FIREBASE CLOUD DATA
+        function syncCloudData(uid) {
+            db.collection('users').doc(uid).collection('attempts').get()
+                .then((querySnapshot) => {
+                    const cloudAttempts = [];
+                    querySnapshot.forEach((doc) => {
+                        cloudAttempts.push(doc.data());
+                    });
+                    if (cloudAttempts.length > 0) {
+                        appState.attempts = cloudAttempts;
+                        saveStateToLocalStorage();
+                        renderDashboard();
+                    }
+                })
+                .catch((err) => {
+                    console.error('Error reading cloud data:', err);
+                });
+        }
+
+        function saveRecordToCloud(record) {
+            if (!currentUser) return;
+            db.collection('users').doc(currentUser.uid).collection('attempts').doc(record.id).set(record)
+                .catch(err => console.error('Cloud save error:', err));
+        }
+
+        function deleteRecordFromCloud(recordId) {
+            if (!currentUser) return;
+            db.collection('users').doc(currentUser.uid).collection('attempts').doc(recordId).delete()
+                .catch(err => console.error('Cloud delete error:', err));
+        }
+
+        // GLOBAL DELETION FUNCTIONS
+        window.deleteAttempt = function(id) {
+            if (confirm('Are you sure you want to delete this paper attempt?')) {
+                appState.attempts = appState.attempts.filter(a => a.id !== id);
+                deleteRecordFromCloud(id);
+                saveStateToLocalStorage();
+                renderDashboard();
+            }
+        };
+
+        window.deleteSubject = function(subId) {
+            if (confirm('Delete this subject and all associated paper definitions?')) {
+                appState.subjects = appState.subjects.filter(s => s.id !== subId);
+                saveStateToLocalStorage();
+                renderSubjectManagerList();
+                renderSubjectDropdowns();
+            }
+        };
+
+        window.removePaper = function(subId, paperId) {
+            const sub = appState.subjects.find(s => s.id === subId);
+            if (sub) {
+                sub.papers = sub.papers.filter(p => p.id !== paperId);
+                saveStateToLocalStorage();
+                renderSubjectManagerList();
+                renderSubjectDropdowns();
+            }
+        };
+
+        // LOCAL STORAGE LOAD/SAVE
+        function loadStateFromLocalStorage() {
+            const storedState = localStorage.getItem('ial_tracker_state_v11');
+            if (storedState) {
+                appState = JSON.parse(storedState);
+            } else {
+                appState = {
+                    subjects: DEFAULT_SUBJECTS,
+                    attempts: [],
+                    theme: 'dark'
+                };
+                saveStateToLocalStorage();
+            }
+
+            if (appState.theme === 'light') {
+                document.documentElement.classList.remove('dark');
+            } else {
+                document.documentElement.classList.add('dark');
+            }
+            updateThemeIcon();
+        }
+
+        function saveStateToLocalStorage() {
+            localStorage.setItem('ial_tracker_state_v11', JSON.stringify(appState));
+        }
+
+        // THEME TOGGLE
+        function toggleTheme() {
+            if (document.documentElement.classList.contains('dark')) {
+                document.documentElement.classList.remove('dark');
+                appState.theme = 'light';
+            } else {
+                document.documentElement.classList.add('dark');
+                appState.theme = 'dark';
+            }
+            saveStateToLocalStorage();
+            updateThemeIcon();
+        }
+
+        function updateThemeIcon() {
+            const icon = document.getElementById('theme-icon');
+            if (document.documentElement.classList.contains('dark')) {
+                icon.setAttribute('data-lucide', 'sun');
+            } else {
+                icon.setAttribute('data-lucide', 'moon');
+            }
+            lucide.createIcons();
+        }
+
+        // TIMER FUNCTIONS
+        function setTimerMode(mode) {
+            pauseTimer();
+            timerMode = mode;
+
+            const swBtn = document.getElementById('mode-stopwatch-btn');
+            const cdBtn = document.getElementById('mode-countdown-btn');
+            const cdSetup = document.getElementById('countdown-setup');
+
+            if (mode === 'stopwatch') {
+                swBtn.className = "px-1.5 py-0.5 rounded-md font-bold bg-white text-indigo-900";
+                cdBtn.className = "px-1.5 py-0.5 rounded-md font-semibold text-indigo-200 hover:text-white";
+                cdSetup.classList.add('hidden');
+                timerSeconds = 0;
+            } else {
+                cdBtn.className = "px-1.5 py-0.5 rounded-md font-bold bg-white text-indigo-900";
+                swBtn.className = "px-1.5 py-0.5 rounded-md font-semibold text-indigo-200 hover:text-white";
+                cdSetup.classList.remove('hidden');
+                applyCountdownSetup();
+            }
+            document.getElementById('live-timer-display').textContent = formatSecondsToHHMMSS(timerSeconds);
+        }
+
+        function applyCountdownSetup() {
+            const hh = parseInt(document.getElementById('cd-hours').value) || 0;
+            const mm = parseInt(document.getElementById('cd-mins').value) || 0;
+            countdownInitialSecs = (hh * 3600) + (mm * 60);
+            timerSeconds = countdownInitialSecs;
+            document.getElementById('live-timer-display').textContent = formatSecondsToHHMMSS(timerSeconds);
+        }
+
+        function startTimer() {
+            if (timerInterval) return;
+
+            timerInterval = setInterval(() => {
+                if (timerMode === 'stopwatch') {
+                    timerSeconds++;
+                } else {
+                    if (timerSeconds > 0) {
+                        timerSeconds--;
+                    } else {
+                        pauseTimer();
+                        alert("Time's Up! Practice Exam session completed.");
+                    }
+                }
+                document.getElementById('live-timer-display').textContent = formatSecondsToHHMMSS(timerSeconds);
+            }, 1000);
+
+            document.getElementById('btn-start-timer').classList.add('hidden');
+            document.getElementById('btn-pause-timer').classList.remove('hidden');
+        }
+
+        function pauseTimer() {
+            clearInterval(timerInterval);
+            timerInterval = null;
+            document.getElementById('btn-start-timer').classList.remove('hidden');
+            document.getElementById('btn-pause-timer').classList.add('hidden');
+        }
+
+        function resetTimer() {
+            pauseTimer();
+            if (timerMode === 'stopwatch') {
+                timerSeconds = 0;
+            } else {
+                timerSeconds = countdownInitialSecs;
+            }
+            document.getElementById('live-timer-display').textContent = formatSecondsToHHMMSS(timerSeconds);
+        }
+
+        function copyLiveTimerToModal() {
+            let elapsed = timerSeconds;
+            if (timerMode === 'countdown') {
+                elapsed = Math.max(0, countdownInitialSecs - timerSeconds);
+            }
+
+            const hh = Math.floor(elapsed / 3600);
+            const mm = Math.floor((elapsed % 3600) / 60);
+            const ss = elapsed % 60;
+
+            document.getElementById('modal-time-hh').value = hh;
+            document.getElementById('modal-time-mm').value = mm;
+            document.getElementById('modal-time-ss').value = ss;
+        }
+
+        function populateYearDropdowns() {
+            const yearSelect = document.getElementById('modal-year-select');
+            yearSelect.innerHTML = YEARS.map(y => `<option value="${y}">${y}</option>`).join('');
+        }
+
+        function renderSubjectDropdowns() {
+            const headerSubSelect = document.getElementById('header-subject-select');
+            const modalSubSelect = document.getElementById('modal-subject-select');
+
+            const optionsHTML = appState.subjects.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+            headerSubSelect.innerHTML = optionsHTML;
+            modalSubSelect.innerHTML = optionsHTML;
+
+            handleHeaderSubjectChange();
+            handleModalSubjectChange();
+        }
+
+        function handleHeaderSubjectChange() {
+            const subId = document.getElementById('header-subject-select').value;
+            const subject = appState.subjects.find(s => s.id === subId);
+            const paperSelect = document.getElementById('header-paper-select');
+
+            if (subject && subject.papers.length > 0) {
+                paperSelect.innerHTML = subject.papers.map(p => 
+                    `<option value="${p.id}">${p.name} (${p.code})</option>`
+                ).join('');
+            } else {
+                paperSelect.innerHTML = `<option value="">No papers added</option>`;
+            }
+
+            renderDashboard();
+        }
+
+        function handleModalSubjectChange() {
+            const subId = document.getElementById('modal-subject-select').value;
+            const subject = appState.subjects.find(s => s.id === subId);
+            const paperSelect = document.getElementById('modal-paper-select');
+
+            if (subject && subject.papers.length > 0) {
+                paperSelect.innerHTML = subject.papers.map(p => 
+                    `<option value="${p.id}">${p.name} (${p.code})</option>`
+                ).join('');
+            } else {
+                paperSelect.innerHTML = `<option value="">No papers configured</option>`;
+            }
+            updateModalMaxMarkAndGrade();
+        }
+
+        function handleModalSessionTypeChange() {
+            const sessionSelect = document.getElementById('modal-session-select');
+            const yearSelect = document.getElementById('modal-year-select');
+            
+            if (sessionSelect.value === 'Specimen') {
+                yearSelect.disabled = true;
+                yearSelect.classList.add('opacity-50');
+            } else {
+                yearSelect.disabled = false;
+                yearSelect.classList.remove('opacity-50');
+            }
+            updateModalMaxMarkAndGrade();
+        }
+
+        function handleTrialToggleChange() {
+            const isTrial = document.getElementById('modal-is-trial').checked;
+            const naContainer = document.getElementById('na-score-container');
+            const naCheckbox = document.getElementById('modal-is-na');
+
+            if (isTrial) {
+                naContainer.classList.remove('opacity-50', 'pointer-events-none');
+            } else {
+                naContainer.classList.add('opacity-50', 'pointer-events-none');
+                naCheckbox.checked = false;
+                handleNaToggleChange();
+            }
+        }
+
+        function handleNaToggleChange() {
+            const isNa = document.getElementById('modal-is-na').checked;
+            const rawMarkInput = document.getElementById('modal-raw-mark');
+            const totalMarkInput = document.getElementById('modal-total-mark');
+            const marksPanel = document.getElementById('marks-input-panel');
+
+            if (isNa) {
+                rawMarkInput.required = false;
+                totalMarkInput.required = false;
+                rawMarkInput.value = '';
+                rawMarkInput.disabled = true;
+                totalMarkInput.disabled = true;
+                marksPanel.classList.add('opacity-40', 'pointer-events-none');
+                
+                document.getElementById('preview-percentage').textContent = 'N/A';
+                const badge = document.getElementById('preview-grade-badge');
+                badge.textContent = 'Grade N/A';
+                badge.className = 'px-2 py-0.5 rounded-md text-xs font-bold bg-slate-200 dark:bg-slate-700 text-slate-500';
+            } else {
+                rawMarkInput.required = true;
+                totalMarkInput.required = true;
+                rawMarkInput.disabled = false;
+                totalMarkInput.disabled = false;
+                marksPanel.classList.remove('opacity-40', 'pointer-events-none');
+                updateModalMaxMarkAndGrade();
+            }
+        }
+
+        function getBoundaryForPaper(unitCode, session, year) {
+            const baseUnit = unitCode ? unitCode.split('/')[0] : '';
+            const unitDict = SAMPLE_BOUNDARIES[baseUnit] || {};
+
+            let seriesKey = "";
+            if (session === 'Specimen') {
+                seriesKey = "Specimen 2018";
+            } else if (session === 'Jan/Feb') {
+                seriesKey = `January ${year}`;
+            } else if (session === 'May/June') {
+                seriesKey = `June ${year}`;
+            } else if (session === 'Oct/Nov') {
+                seriesKey = `October ${year}`;
+            }
+
+            if (unitDict[seriesKey]) {
+                return { boundary: unitDict[seriesKey], series: seriesKey };
+            }
+
+            const keys = Object.keys(unitDict);
+            if (keys.length > 0) {
+                return { boundary: unitDict[keys[0]], series: keys[0] };
+            }
+
+            return {
+                boundary: { maxMark: 75, AStar: 60, A: 53, B: 45, C: 38, D: 30, E: 23 },
+                series: "Standard Boundary"
+            };
+        }
+
+        function calculateExactGrade(rawMark, totalMark, unitCode, session, year) {
+            if (rawMark === 'N/A' || rawMark === null || rawMark === undefined) {
+                return { grade: 'N/A', color: 'bg-slate-600 text-slate-200', text: 'text-slate-400', boundary: null };
+            }
+
+            const { boundary } = getBoundaryForPaper(unitCode, session, year);
+            const pct = Math.min(100, Math.max(0, Math.round((rawMark / totalMark) * 100)));
+
+            if (boundary) {
+                if (boundary.AStar !== null && boundary.AStar !== undefined && rawMark >= boundary.AStar) {
+                    return { grade: 'A*', color: 'bg-emerald-500 text-white', text: 'text-emerald-500', boundary };
+                }
+                if (rawMark >= boundary.A) return { grade: 'A', color: 'bg-emerald-600 text-white', text: 'text-emerald-600', boundary };
+                if (rawMark >= boundary.B) return { grade: 'B', color: 'bg-amber-500 text-white', text: 'text-amber-500', boundary };
+                if (rawMark >= boundary.C) return { grade: 'C', color: 'bg-amber-600 text-white', text: 'text-amber-600', boundary };
+                if (rawMark >= boundary.D) return { grade: 'D', color: 'bg-rose-500 text-white', text: 'text-rose-500', boundary };
+                if (rawMark >= boundary.E) return { grade: 'E', color: 'bg-rose-600 text-white', text: 'text-rose-600', boundary };
+                return { grade: 'U', color: 'bg-slate-700 text-white', text: 'text-slate-400', boundary };
+            }
+
+            if (pct >= 80) return { grade: 'A*', color: 'bg-emerald-500 text-white', text: 'text-emerald-500', boundary: null };
+            if (pct >= 70) return { grade: 'A', color: 'bg-emerald-600 text-white', text: 'text-emerald-600', boundary: null };
+            if (pct >= 60) return { grade: 'B', color: 'bg-amber-500 text-white', text: 'text-amber-500', boundary: null };
+            if (pct >= 50) return { grade: 'C', color: 'bg-amber-600 text-white', text: 'text-amber-600', boundary: null };
+            if (pct >= 40) return { grade: 'D', color: 'bg-rose-500 text-white', text: 'text-rose-500', boundary: null };
+            if (pct >= 30) return { grade: 'E', color: 'bg-rose-600 text-white', text: 'text-rose-600', boundary: null };
+            return { grade: 'U', color: 'bg-slate-700 text-white', text: 'text-slate-400', boundary: null };
+        }
+
+        function updateModalMaxMarkAndGrade() {
+            if (document.getElementById('modal-is-na').checked) return;
+
+            const subId = document.getElementById('modal-subject-select').value;
+            const paperId = document.getElementById('modal-paper-select').value;
+            const session = document.getElementById('modal-session-select').value;
+            const year = parseInt(document.getElementById('modal-year-select').value) || 2024;
+
+            const subject = appState.subjects.find(s => s.id === subId);
+            const paper = subject?.papers.find(p => p.id === paperId);
+
+            if (paper) {
+                const { boundary } = getBoundaryForPaper(paper.code, session, year);
+                if (boundary && boundary.maxMark) {
+                    document.getElementById('modal-total-mark').value = boundary.maxMark;
+                }
+            }
+            calculateGradePreview();
+        }
+
+        function calculateGradePreview() {
+            if (document.getElementById('modal-is-na').checked) return;
+
+            const subId = document.getElementById('modal-subject-select').value;
+            const paperId = document.getElementById('modal-paper-select').value;
+            const session = document.getElementById('modal-session-select').value;
+            const year = parseInt(document.getElementById('modal-year-select').value) || 2024;
+
+            const subject = appState.subjects.find(s => s.id === subId);
+            const paper = subject?.papers.find(p => p.id === paperId);
+
+            const raw = parseFloat(document.getElementById('modal-raw-mark').value) || 0;
+            const total = parseFloat(document.getElementById('modal-total-mark').value) || 1;
+            
+            let pct = Math.min(100, Math.max(0, Math.round((raw / total) * 100)));
+            const gradeInfo = calculateExactGrade(raw, total, paper ? paper.code : '', session, year);
+
+            document.getElementById('preview-percentage').textContent = `${pct}%`;
+            const badge = document.getElementById('preview-grade-badge');
+            badge.textContent = `Grade ${gradeInfo.grade}`;
+            badge.className = `px-2 py-0.5 rounded-md text-xs font-bold ${gradeInfo.color}`;
+        }
+
+        // RENDER DASHBOARD & MATRIX
+        function renderDashboard() {
+            const selectedSubId = document.getElementById('header-subject-select').value;
+            const selectedPaperId = document.getElementById('header-paper-select').value;
+
+            const subject = appState.subjects.find(s => s.id === selectedSubId);
+            const paper = subject?.papers.find(p => p.id === selectedPaperId);
+
+            const filteredAttempts = appState.attempts.filter(a => 
+                a.subjectId === selectedSubId && a.paperId === selectedPaperId
+            );
+
+            // STATS FILTERING: Exclude Trial & N/A attempts from numerical averages
+            const validOfficialAttempts = filteredAttempts.filter(a => !a.isTrial && !a.isNa && typeof a.percentage === 'number');
+
+            const totalAttempts = validOfficialAttempts.length;
+            const possibleSlots = (YEARS.length * SESSIONS.length) + 1;
+
+            // COVERAGE DEDUPLICATION: Count unique paper slots (Session + Year) with at least 1 attempt
+            const uniqueCoveredSlots = new Set(
+                filteredAttempts.map(a => a.session === 'Specimen' ? 'Specimen' : `${a.session}_${a.year}`)
+            ).size;
+
+            document.getElementById('stat-total-papers').textContent = totalAttempts;
+            document.getElementById('stat-completion-pct').textContent = `${Math.round((uniqueCoveredSlots / possibleSlots) * 100)}% of grid`;
+
+            if (totalAttempts > 0) {
+                const avgPct = Math.round(validOfficialAttempts.reduce((acc, curr) => acc + curr.percentage, 0) / totalAttempts);
+                const avgGrade = calculateExactGrade(avgPct, 100, paper ? paper.code : '', 'May/June', 2024);
+
+                document.getElementById('stat-avg-score').textContent = `${avgPct}%`;
+                const badge = document.getElementById('stat-avg-badge');
+                badge.textContent = `Grade ${avgGrade.grade}`;
+                badge.className = `text-xs font-bold px-2 py-0.5 rounded-full ${avgGrade.color}`;
+
+                const totalSecs = validOfficialAttempts.reduce((acc, curr) => acc + (curr.durationSecs || 0), 0);
+                const avgSecs = Math.round(totalSecs / totalAttempts);
+                document.getElementById('stat-avg-time').textContent = formatSecondsToHHMMSS(avgSecs);
+
+                const topPct = Math.max(...validOfficialAttempts.map(a => a.percentage));
+                document.getElementById('stat-top-grade').textContent = calculateExactGrade(topPct, 100, paper ? paper.code : '', 'May/June', 2024).grade;
+            } else {
+                document.getElementById('stat-avg-score').textContent = '0%';
+                document.getElementById('stat-avg-badge').textContent = '-';
+                document.getElementById('stat-avg-badge').className = 'text-xs font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500';
+                document.getElementById('stat-avg-time').textContent = '00:00:00';
+                document.getElementById('stat-top-grade').textContent = '-';
+            }
+
+            document.getElementById('coverage-text').textContent = `${uniqueCoveredSlots} / ${possibleSlots}`;
+            document.getElementById('coverage-bar').style.width = `${Math.min(100, (uniqueCoveredSlots / possibleSlots) * 100)}%`;
+
+            renderGradeScaleSideCard(paper ? paper.code : '');
+            renderMatrix(filteredAttempts, selectedSubId, selectedPaperId, paper ? paper.code : '');
+            renderAttemptsTable(filteredAttempts);
+        }
+
+        function renderGradeScaleSideCard(unitCode) {
+            const container = document.getElementById('grade-scale-container');
+            const { boundary, series } = getBoundaryForPaper(unitCode, 'May/June', 2024);
+            document.getElementById('grade-scale-subtitle').textContent = `Raw Mark thresholds for ${unitCode} (${series})`;
+
+            if (!boundary) return;
+
+            let html = '';
+            if (boundary.AStar !== null && boundary.AStar !== undefined) {
+                html += `
+                    <div class="flex items-center justify-between p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300">
+                        <span class="font-bold">Grade A*</span>
+                        <span class="font-mono font-semibold">≥ ${boundary.AStar} / ${boundary.maxMark} Raw</span>
+                    </div>
+                `;
+            }
+            html += `
+                <div class="flex items-center justify-between p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400">
+                    <span class="font-bold">Grade A</span>
+                    <span class="font-mono font-semibold">≥ ${boundary.A} Raw</span>
+                </div>
+                <div class="flex items-center justify-between p-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-300">
+                    <span class="font-bold">Grade B</span>
+                    <span class="font-mono font-semibold">≥ ${boundary.B} Raw</span>
+                </div>
+                <div class="flex items-center justify-between p-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400">
+                    <span class="font-bold">Grade C</span>
+                    <span class="font-mono font-semibold">≥ ${boundary.C} Raw</span>
+                </div>
+                <div class="flex items-center justify-between p-2 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-700 dark:text-rose-300">
+                    <span class="font-bold">Grade D / E</span>
+                    <span class="font-mono font-semibold">≥ ${boundary.D} / ${boundary.E} Raw</span>
+                </div>
+            `;
+            container.innerHTML = html;
+        }
+
+        function renderMatrix(attempts, subId, paperId, unitCode) {
+            const body = document.getElementById('matrix-body');
+            body.innerHTML = '';
+
+            // SPECIMEN ROW (Show Latest Attempt)
+            const specimenMatches = attempts.filter(a => a.session === 'Specimen').sort((a, b) => b.timestamp - a.timestamp);
+            const specimenMatch = specimenMatches[0]; // latest attempt
+
+            const specimenRow = document.createElement('tr');
+            specimenRow.className = "bg-slate-100/50 dark:bg-slate-800/40 font-medium";
+
+            if (specimenMatch) {
+                const gradeInfo = calculateExactGrade(specimenMatch.rawMark, specimenMatch.totalMark, unitCode, 'Specimen', 2018);
+                const scoreDisplay = specimenMatch.isNa ? 'N/A' : `${specimenMatch.percentage}% (Grade ${gradeInfo.grade})`;
+
+                specimenRow.innerHTML = `
+                    <td class="py-3 px-2 text-left font-bold text-indigo-600 dark:text-indigo-400 font-mono">Specimen</td>
+                    <td colspan="3" class="py-2 px-2">
+                        <button onclick="quickLog('${subId}', '${paperId}', 'Specimen', 2018)" 
+                                class="${gradeInfo.color} w-full font-bold text-xs py-1.5 rounded-xl shadow-sm hover:scale-[1.01] transition-transform flex items-center justify-center gap-2">
+                            <span>Specimen Paper - ${scoreDisplay}</span>
+                            ${specimenMatch.isTrial ? '<span class="text-[10px] bg-amber-400 text-slate-900 px-1.5 py-0.5 rounded font-black uppercase">Trial</span>' : ''}
+                        </button>
+                    </td>
+                `;
+            } else {
+                specimenRow.innerHTML = `
+                    <td class="py-3 px-2 text-left font-bold text-indigo-600 dark:text-indigo-400 font-mono">Specimen</td>
+                    <td colspan="3" class="py-2 px-2">
+                        <button onclick="quickLog('${subId}', '${paperId}', 'Specimen', 2018)" 
+                                class="w-full text-slate-400 hover:text-indigo-600 dark:text-slate-500 dark:hover:text-indigo-400 border border-dashed border-slate-300 dark:border-slate-700 hover:border-indigo-500 py-1.5 rounded-xl transition-colors text-xs font-semibold flex items-center justify-center gap-1">
+                            <i data-lucide="plus" class="w-3.5 h-3.5 pointer-events-none"></i> Log Specimen Paper
+                        </button>
+                    </td>
+                `;
+            }
+            body.appendChild(specimenRow);
+
+            // YEAR ROWS
+            YEARS.forEach(year => {
+                const row = document.createElement('tr');
+                let cellsHTML = `<td class="py-3 px-2 text-left font-bold text-slate-700 dark:text-slate-300 font-mono">${year}</td>`;
+
+                SESSIONS.forEach(session => {
+                    const matches = attempts.filter(a => a.year === year && a.session === session).sort((a, b) => b.timestamp - a.timestamp);
+                    const match = matches[0]; // Latest attempt
+                    
+                    if (match) {
+                        const gradeInfo = calculateExactGrade(match.rawMark, match.totalMark, unitCode, session, year);
+                        const scoreDisplay = match.isNa ? 'N/A' : `${match.percentage}% (${gradeInfo.grade})`;
+
+                        cellsHTML += `
+                            <td class="py-2 px-2">
+                                <button onclick="quickLog('${subId}', '${paperId}', '${session}', ${year})" 
+                                        class="${gradeInfo.color} font-bold text-xs px-2.5 py-1.5 rounded-xl shadow-sm hover:scale-105 transition-transform inline-flex items-center gap-1">
+                                    <span>${scoreDisplay}</span>
+                                    ${match.isTrial ? '<span class="text-[9px] bg-amber-400 text-slate-900 px-1 py-0.2 rounded font-black uppercase">T</span>' : ''}
+                                </button>
+                            </td>
+                        `;
+                    } else {
+                        cellsHTML += `
+                            <td class="py-2 px-2">
+                                <button onclick="quickLog('${subId}', '${paperId}', '${session}', ${year})" 
+                                        class="text-slate-400 hover:text-indigo-600 dark:text-slate-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-800/80 p-1.5 rounded-xl transition-colors">
+                                    <i data-lucide="plus" class="w-4 h-4 mx-auto pointer-events-none"></i>
+                                </button>
+                            </td>
+                        `;
+                    }
+                });
+
+                row.innerHTML = cellsHTML;
+                body.appendChild(row);
+            });
+
+            lucide.createIcons();
+        }
+
+        // RENDER ATTEMPTS TABLE WITH ROW CLICK FOR DETAILS
+        function renderAttemptsTable(attempts) {
+            const body = document.getElementById('attempts-table-body');
+            body.innerHTML = '';
+
+            if (attempts.length === 0) {
+                body.innerHTML = `
+                    <tr>
+                        <td colspan="8" class="py-8 text-center text-slate-400 text-xs">
+                            No logged attempts found for this paper. Click '+ Log Paper' or a matrix cell to add one.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            attempts.sort((a, b) => b.timestamp - a.timestamp).forEach(a => {
+                const sub = appState.subjects.find(s => s.id === a.subjectId);
+                const paper = sub?.papers.find(p => p.id === a.paperId);
+                const gradeInfo = calculateExactGrade(a.rawMark, a.totalMark, paper ? paper.code : '', a.session, a.year);
+
+                const markDisplay = a.isNa ? 'N/A' : `${a.rawMark} / ${a.totalMark}`;
+                const pctDisplay = a.isNa ? 'N/A' : `${a.percentage}%`;
+                const gradeDisplay = a.isNa ? 'Grade N/A' : `Grade ${gradeInfo.grade}`;
+
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors cursor-pointer';
+                
+                // Open details modal when clicking row
+                tr.onclick = (e) => {
+                    if (e.target.closest('.delete-btn')) return; // Prevent triggering row click on delete button
+                    openDetailModal(a.id);
+                };
+
+                tr.innerHTML = `
+                    <td class="py-3 px-3 font-semibold text-slate-800 dark:text-slate-200">
+                        ${sub ? sub.name : ''} - ${paper ? paper.name : ''} <span class="text-xs text-slate-400 font-mono">(${paper ? paper.code : ''})</span>
+                    </td>
+                    <td class="py-3 px-3 text-slate-600 dark:text-slate-400 font-mono text-xs">${a.session === 'Specimen' ? 'Specimen Paper' : a.session + ' ' + a.year}</td>
+                    <td class="py-3 px-3 font-mono text-xs">${markDisplay}</td>
+                    <td class="py-3 px-3 font-mono font-bold ${gradeInfo.text}">${pctDisplay}</td>
+                    <td class="py-3 px-3">
+                        <span class="px-2 py-0.5 text-xs font-bold rounded-md ${gradeInfo.color}">${gradeDisplay}</span>
+                    </td>
+                    <td class="py-3 px-3 font-mono text-xs text-slate-500">${formatSecondsToHHMMSS(a.durationSecs || 0)}</td>
+                    <td class="py-3 px-3 text-xs">
+                        ${a.isTrial 
+                            ? '<span class="px-2 py-0.5 font-bold rounded-full bg-amber-500/20 text-amber-500 border border-amber-500/30">Trial</span>' 
+                            : '<span class="px-2 py-0.5 font-bold rounded-full bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">Official</span>'}
+                    </td>
+                    <td class="py-3 px-3 text-right">
+                        <button onclick="window.deleteAttempt('${a.id}')" class="delete-btn text-rose-500 hover:text-rose-700 p-1 rounded-md" title="Delete record">
+                            <i data-lucide="trash-2" class="w-4 h-4 pointer-events-none"></i>
+                        </button>
+                    </td>
+                `;
+                body.appendChild(tr);
+            });
+
+            lucide.createIcons();
+        }
+
+        // ATTEMPT DETAIL MODAL FUNCTIONS
+        function openDetailModal(attemptId) {
+            const attempt = appState.attempts.find(a => a.id === attemptId);
+            if (!attempt) return;
+
+            const sub = appState.subjects.find(s => s.id === attempt.subjectId);
+            const paper = sub?.papers.find(p => p.id === attempt.paperId);
+            const gradeInfo = calculateExactGrade(attempt.rawMark, attempt.totalMark, paper ? paper.code : '', attempt.session, attempt.year);
+
+            const markDisplay = attempt.isNa ? 'N/A' : `${attempt.rawMark} / ${attempt.totalMark}`;
+            const pctDisplay = attempt.isNa ? 'N/A' : `${attempt.percentage}%`;
+            const formattedDate = new Date(attempt.timestamp).toLocaleString();
+
+            const container = document.getElementById('detail-modal-content');
+            container.innerHTML = `
+                <div class="grid grid-cols-2 gap-3 p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+                    <div>
+                        <span class="text-slate-400 block text-[11px]">Subject</span>
+                        <span class="font-bold text-slate-800 dark:text-slate-200">${sub ? sub.name : '-'}</span>
+                    </div>
+                    <div>
+                        <span class="text-slate-400 block text-[11px]">Paper</span>
+                        <span class="font-bold text-slate-800 dark:text-slate-200">${paper ? paper.name : '-'} (${paper ? paper.code : ''})</span>
+                    </div>
+                    <div>
+                        <span class="text-slate-400 block text-[11px]">Session / Year</span>
+                        <span class="font-semibold text-slate-700 dark:text-slate-300">${attempt.session === 'Specimen' ? 'Specimen' : `${attempt.session}${attempt.year}`}</span>
+                    </div>
+                    <div>
+                        <span class="text-slate-400 block text-[11px]">Attempt Type</span>
+                        <span class="font-semibold">${attempt.isTrial ? 'Practice / Trial' : 'Official Attempt'}</span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-3 p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 text-center">
+                    <div>
+                        <span class="text-slate-400 block text-[11px]">Raw Score</span>
+                        <span class="font-mono font-bold text-sm">${markDisplay}</span>
+                    </div>
+                    <div>
+                        <span class="text-slate-400 block text-[11px]">Percentage</span>
+                        <span class="font-mono font-bold text-sm ${gradeInfo.text}">${pctDisplay}</span>
+                    </div>
+                    <div>
+                        <span class="text-slate-400 block text-[11px]">Grade</span>
+                        <span class="px-2 py-0.5 rounded text-xs font-bold ${gradeInfo.color}">${attempt.isNa ? 'N/A' : gradeInfo.grade}</span>
+                    </div>
+                </div>
+
+                <div class="p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 space-y-1">
+                    <span class="text-slate-400 block text-[11px]">Time Spent</span>
+                    <span class="font-mono font-semibold">${formatSecondsToHHMMSS(attempt.durationSecs || 0)}</span>
+                </div>
+
+                <div class="p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 space-y-1">
+                    <span class="text-slate-400 block text-[11px]">Logged At</span>
+                    <span class="text-slate-700 dark:text-slate-300 font-medium">${formattedDate}</span>
+                </div>
+
+                <div class="p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 space-y-1">
+                    <span class="text-slate-400 block text-[11px]">Mistakes / Notes Recorded</span>
+                    <p class="text-slate-800 dark:text-slate-200 whitespace-pre-wrap ${attempt.notes ? '' : 'italic text-slate-400'}">
+                        ${attempt.notes ? attempt.notes : 'No notes entered for this attempt.'}
+                    </p>
+                </div>
+            `;
+
+            document.getElementById('detail-modal').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function closeDetailModal() {
+            document.getElementById('detail-modal').classList.add('hidden');
+        }
+
+        // EXPORT ATTEMPTS DATA TO CSV
+        function exportAttemptsToCSV() {
+            const selectedSubId = document.getElementById('header-subject-select').value;
+            const selectedPaperId = document.getElementById('header-paper-select').value;
+
+            const filteredAttempts = appState.attempts.filter(a => 
+                a.subjectId === selectedSubId && a.paperId === selectedPaperId
+            );
+
+            if (filteredAttempts.length === 0) {
+                alert("No attempt data available to export for the selected paper.");
+                return;
+            }
+
+            const headers = [
+                "Attempt ID",
+                "Subject",
+                "Paper Name",
+                "Paper Code",
+                "Session",
+                "Year",
+                "Raw Mark",
+                "Total Mark",
+                "Percentage",
+                "Grade",
+                "Time Used (HH:MM:SS)",
+                "Type",
+                "Date Logged",
+                "Notes"
+            ];
+
+            const rows = filteredAttempts.map(a => {
+                const sub = appState.subjects.find(s => s.id === a.subjectId);
+                const paper = sub?.papers.find(p => p.id === a.paperId);
+                const gradeInfo = calculateExactGrade(a.rawMark, a.totalMark, paper ? paper.code : '', a.session, a.year);
+                
+                // Escape quotes inside fields
+                const escapeCSV = (val) => `"${String(val ?? '').replace(/"/g, '""')}"`;
+
+                return [
+                    escapeCSV(a.id),
+                    escapeCSV(sub ? sub.name : ''),
+                    escapeCSV(paper ? paper.name : ''),
+                    escapeCSV(paper ? paper.code : ''),
+                    escapeCSV(a.session),
+                    escapeCSV(a.year),
+                    escapeCSV(a.rawMark),
+                    escapeCSV(a.totalMark),
+                    escapeCSV(a.percentage),
+                    escapeCSV(a.isNa ? 'N/A' : gradeInfo.grade),
+                    escapeCSV(formatSecondsToHHMMSS(a.durationSecs || 0)),
+                    escapeCSV(a.isTrial ? 'Trial' : 'Official'),
+                    escapeCSV(new Date(a.timestamp).toLocaleString()),
+                    escapeCSV(a.notes || '')
+                ].join(',');
+            });
+
+            const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...rows].join('\n');
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            
+            const paperName = appState.subjects.find(s => s.id === selectedSubId)?.papers.find(p => p.id === selectedPaperId)?.name || 'attempts';
+            const fileName = `${paperName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_history.csv`;
+
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", fileName);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // LOGGING MODAL LOGIC
+        function openLogModal() {
+            document.getElementById('log-form').reset();
+            document.getElementById('modal-is-trial').checked = false;
+            document.getElementById('modal-is-na').checked = false;
+            handleTrialToggleChange();
+            handleModalSubjectChange();
+            handleModalSessionTypeChange();
+            copyLiveTimerToModal();
+            document.getElementById('log-modal').classList.remove('hidden');
+        }
+
+        function closeLogModal() {
+            document.getElementById('log-modal').classList.add('hidden');
+        }
+
+        function quickLog(subId, paperId, session, year) {
+            openLogModal();
+            document.getElementById('modal-subject-select').value = subId;
+            handleModalSubjectChange();
+            document.getElementById('modal-paper-select').value = paperId;
+            document.getElementById('modal-session-select').value = session;
+            if (session !== 'Specimen') {
+                document.getElementById('modal-year-select').value = year;
+            }
+            handleModalSessionTypeChange();
+        }
+
+        function savePaperAttempt(e) {
+            e.preventDefault();
+
+            const subId = document.getElementById('modal-subject-select').value;
+            const paperId = document.getElementById('modal-paper-select').value;
+            const session = document.getElementById('modal-session-select').value;
+            const year = session === 'Specimen' ? 2018 : parseInt(document.getElementById('modal-year-select').value);
+            const isTrial = document.getElementById('modal-is-trial').checked;
+            const isNa = isTrial && document.getElementById('modal-is-na').checked;
+            const notes = document.getElementById('modal-notes').value;
+
+            let rawMark = 'N/A';
+            let totalMark = 'N/A';
+            let percentage = 'N/A';
+
+            if (!isNa) {
+                rawMark = parseFloat(document.getElementById('modal-raw-mark').value);
+                totalMark = parseFloat(document.getElementById('modal-total-mark').value);
+                percentage = Math.min(100, Math.round((rawMark / totalMark) * 100));
+            }
+
+            const hh = parseInt(document.getElementById('modal-time-hh').value) || 0;
+            const mm = parseInt(document.getElementById('modal-time-mm').value) || 0;
+            const ss = parseInt(document.getElementById('modal-time-ss').value) || 0;
+            const durationSecs = (hh * 3600) + (mm * 60) + ss;
+
+            // MULTIPLE ATTEMPTS ALLOWED: Create new unique ID per submission
+            const newRecord = {
+                id: 'att_' + Date.now(),
+                subjectId: subId,
+                paperId: paperId,
+                session: session,
+                year: year,
+                rawMark: rawMark,
+                totalMark: totalMark,
+                percentage: percentage,
+                durationSecs: durationSecs,
+                isTrial: isTrial,
+                isNa: isNa,
+                notes: notes,
+                timestamp: Date.now()
+            };
+
+            appState.attempts.push(newRecord);
+
+            saveRecordToCloud(newRecord);
+            saveStateToLocalStorage();
+            closeLogModal();
+            renderDashboard();
+        }
+
+        // SUBJECT & PAPER CUSTOMIZATION MANAGER
+        function openSubjectManager() {
+            renderSubjectManagerList();
+            document.getElementById('subject-modal').classList.remove('hidden');
+        }
+
+        function closeSubjectManager() {
+            document.getElementById('subject-modal').classList.add('hidden');
+            renderSubjectDropdowns();
+        }
+
+        function renderSubjectManagerList() {
+            const list = document.getElementById('subject-manager-list');
+            list.innerHTML = '';
+
+            appState.subjects.forEach(sub => {
+                const card = document.createElement('div');
+                card.className = 'p-4 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-3';
+                
+                let papersHTML = sub.papers.map(p => `
+                    <div class="flex items-center gap-2 text-xs">
+                        <span class="font-semibold text-slate-700 dark:text-slate-300 w-1/3">${p.name}</span>
+                        <span class="font-mono text-slate-400">${p.code}</span>
+                        <button onclick="window.removePaper('${sub.id}', '${p.id}')" class="text-rose-500 hover:text-rose-700 ml-auto">
+                            <i data-lucide="x" class="w-3.5 h-3.5 pointer-events-none"></i>
+                        </button>
+                    </div>
+                `).join('');
+
+                card.innerHTML = `
+                    <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
+                        <h4 class="font-bold text-sm text-slate-800 dark:text-slate-200">${sub.name}</h4>
+                        <button onclick="window.deleteSubject('${sub.id}')" class="text-xs text-rose-500 hover:underline">Delete Subject</button>
+                    </div>
+                    <div class="space-y-2">
+                        ${papersHTML}
+                    </div>
+                    <div class="flex gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
+                        <input type="text" id="new-paper-name-${sub.id}" placeholder="Unit Name (e.g. Unit 1)" class="flex-1 px-2.5 py-1 text-xs rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                        <input type="text" id="new-paper-code-${sub.id}" placeholder="Code (e.g. WPH11/01)" class="w-28 px-2.5 py-1 text-xs font-mono rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                        <button onclick="addPaperToSubject('${sub.id}')" class="px-2.5 py-1 bg-slate-200 dark:bg-slate-700 hover:bg-indigo-600 hover:text-white rounded-lg text-xs font-semibold transition-colors">Add</button>
+                    </div>
+                `;
+                list.appendChild(card);
+            });
+
+            lucide.createIcons();
+        }
+
+        function addNewSubject() {
+            const nameInput = document.getElementById('new-subject-name');
+            const name = nameInput.value.trim();
+            if (!name) return;
+
+            const newSub = {
+                id: 'sub_' + Date.now(),
+                name: name,
+                papers: []
+            };
+
+            appState.subjects.push(newSub);
+            nameInput.value = '';
+            saveStateToLocalStorage();
+            renderSubjectManagerList();
+        }
+
+        function addPaperToSubject(subId) {
+            const nameInput = document.getElementById(`new-paper-name-${subId}`);
+            const codeInput = document.getElementById(`new-paper-code-${subId}`);
+
+            const name = nameInput.value.trim();
+            const code = codeInput.value.trim();
+
+            if (!name || !code) return;
+
+            const sub = appState.subjects.find(s => s.id === subId);
+            if (sub) {
+                sub.papers.push({
+                    id: 'p_' + Date.now(),
+                    name: name,
+                    code: code,
+                    baseCode: code.split('/')[0]
+                });
+                saveStateToLocalStorage();
+                renderSubjectManagerList();
+            }
+        }
+
+        function formatSecondsToHHMMSS(totalSecs) {
+            if (!totalSecs || totalSecs <= 0) return '00:00:00';
+            const hh = Math.floor(totalSecs / 3600);
+            const mm = Math.floor((totalSecs % 3600) / 60);
+            const ss = totalSecs % 60;
+            return [hh, mm, ss].map(v => String(v).padStart(2, '0')).join(':');
+        }
+    </script>
+</body>
+</html>
